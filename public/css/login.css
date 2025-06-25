@@ -1,0 +1,146 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f2f2f2;
+    padding: 40px;
+    text-align: center;
+}
+
+form {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    display: inline-block;
+}
+
+input,
+button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 200px;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background: linear-gradient(135deg, #e0e7ef 0%, #b6c6e0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.login-container {
+    background: #fff;
+    padding: 2.5rem 2rem 2rem 2rem;
+    border-radius: 18px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10), 0 1.5px 4px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.login-container h2 {
+    margin-bottom: 1.5rem;
+    color: #2d3a4b;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 1.2rem;
+    background: #f7fafd;
+    border: 1px solid #b6c6e0;
+    border-radius: 8px;
+    transition: border 0.2s;
+}
+
+.input-group:focus-within {
+    border-color: #4a90e2;
+    background: #fff;
+}
+
+.input-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 0.7rem;
+    padding-right: 0.3rem;
+}
+
+.input-group input {
+    border: none;
+    outline: none;
+    background: transparent;
+    flex: 1;
+    padding: 0.8rem 1rem 0.8rem 0.2rem;
+    font-size: 1rem;
+    border-radius: 8px;
+}
+
+.input-group input:focus {
+    background: #fff;
+}
+
+.login-container input {
+    /* Eliminar estilos previos para inputs directos */
+    width: 100%;
+    padding: 0;
+    margin-bottom: 0;
+    border: none;
+    background: none;
+    font-size: inherit;
+    border-radius: 0;
+    box-shadow: none;
+    transition: none;
+}
+
+.login-container button {
+    width: 100%;
+    padding: 0.9rem 0;
+    background: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-bottom: 0.5rem;
+}
+
+.login-container button:hover {
+    background: #357abd;
+}
+
+#resultado {
+    margin-top: 0.5rem;
+    min-height: 1.5em;
+    text-align: center;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        padding: 1.5rem 1rem 1rem 1rem;
+        max-width: 95vw;
+    }
+
+    .login-container h2 {
+        font-size: 1.3rem;
+    }
+    .input-group input {
+        font-size: 0.98rem;
+        padding: 0.7rem 0.7rem 0.7rem 0.1rem;
+    }
+    .input-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+}
