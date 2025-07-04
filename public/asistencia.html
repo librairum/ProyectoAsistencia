@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Asistencia</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Menú</span>
+            <button class="sidebar-toggle" id="sidebarToggle">&#9776;</button>
+        </div>
+        <ul class="sidebar-links">
+            <li><a href="dashboard.html"><span class="sidebar-icon">&#127968;</span><span class="sidebar-label">Dashboard</span></a></li>
+            <li><a href="#"><span class="sidebar-icon">&#128197;</span><span class="sidebar-label">Asistencia</span></a></li>
+            <li><a href="#"><span class="sidebar-icon">&#128202;</span><span class="sidebar-label">Reportes</span></a></li>
+            <li>
+                <a href="#" id="logoutLink">
+                    <span class="sidebar-icon">&#128682;</span>
+                    <span class="sidebar-label">Salir</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="main-content" id="mainContent">
+        <div class="dashboard-summary">
+            <div class="summary-card">
+                <div class="summary-title">EMPRESA</div>
+                <div class="summary-value" id="empresaNombre">---</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-title">CANTIDAD DE TRABAJADORES</div>
+                <div class="summary-value" id="cantidadPersonas">---</div>
+            </div>
+        </div>
+
+        <div class="dashboard-charts">
+            <div class="chart-card">
+                <canvas id="chartEmpleadosDepartamento"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/asistencia.js"></script>
+    <script>
+        // Sidebar toggle logic
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('sidebar-collapsed');
+        });
+
+        // Logout logic
+        document.getElementById('logoutLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/';
+        });
+
+        // Sincroniza los valores de empresa en el sidebar
+        document.addEventListener('DOMContentLoaded', function() {
+            const empresaMain = document.getElementById('empresaNombre');
+            const empresaSidebar = document.getElementById('empresaNombreSidebar');
+            if (empresaMain && empresaSidebar) {
+                empresaSidebar.textContent = empresaMain.textContent;
+            }
+        });
+    </script>
+</body>
+</html>

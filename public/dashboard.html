@@ -5,74 +5,118 @@
     <meta charset="UTF-8">
     <title>Dashboard</title>
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-
 <body>
-    <div class="dashboard-header">
-        <h1>Dashboard</h1>
-        <div class="dashboard-filters">
-            <button id="btnHoy">Hoy</button>
-            <button id="btn7dias">Últimos 7 días</button>
-            <button id="btn30dias">Últimos 30 días</button>
-            <button id="btnMes">Este mes</button>
-            <button id="btnPersonalizado">Personalizado</button>
-            <input type="date" id="fechaInicio" style="display:none;">
-            <input type="date" id="fechaFin" style="display:none;">
-            <button id="btnOk" style="display:none;">Ok</button>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">Menú</span>
+            <button class="sidebar-toggle" id="sidebarToggle">&#9776;</button>
         </div>
+        <ul class="sidebar-links">
+            <li><a href="#"><span class="sidebar-icon">&#127968;</span><span class="sidebar-label">Dashboard</span></a></li>
+            <li><a href="asistencia.html"><span class="sidebar-icon">&#128197;</span><span class="sidebar-label">Asistencia</span></a></li>
+            <li><a href="#"><span class="sidebar-icon">&#128202;</span><span class="sidebar-label">Reportes</span></a></li>
+            <li>
+                <a href="#" id="logoutLink">
+                    <span class="sidebar-icon">&#128682;</span>
+                    <span class="sidebar-label">Salir</span>
+                </a>
+            </li>
+        </ul>
     </div>
-
-    <div class="dashboard-summary">
-        <div class="summary-card">
-            <div class="summary-title">EMPRESA</div>
-            <div class="summary-value" id="empresaNombre">---</div>
-        </div>
-        <div class="summary-card">
-            <div class="summary-title">CANTIDAD DE PERSONAS</div>
-            <div class="summary-value" id="cantidadPersonas">---</div>
-        </div>
-    </div>
-
-    <div class="dashboard-charts-row">
-        <div class="asistencia-card">
-            <div class="asistencia-filtros">
-                <label for="filtroEmpleado">Filtrar por empleado:</label>
-                <select id="filtroEmpleado">
-                    <option value="">Todos</option>
-                </select>
+    
+    <div class="main-content" id="mainContent">
+        <div class="dashboard-summary">
+            <div class="summary-card">
+                <div class="summary-title">EMPRESA</div>
+                <div class="summary-value" id="empresaNombre">---</div>
             </div>
-            <h3>Asistencia Detallada</h3>
-            <table id="tablaAsistencia">
-                <thead>
-                    <!-- Cabecera dinámica -->
-                </thead>
-                <tbody>
-                    <!-- Filas dinámicas -->
-                </tbody>
-            </table>
-            <div class="tabla-paginacion">
-                <button id="btnPrev" disabled>&laquo; Anterior</button>
-                <span id="paginaActual">1</span> / <span id="totalPaginas">1</span>
-                <button id="btnNext" disabled>Siguiente &raquo;</button>
+            <div class="summary-card">
+                <div class="summary-title">CANTIDAD DE TRABAJADORES</div>
+                <div class="summary-value" id="cantidadPersonas">---</div>
             </div>
         </div>
-    </div>
+        <div class="dashboard-charts-row">
+            <div class="asistencia-card">
+                <div class="dashboard-filters dashboard-filters-flex">
+                    <button id="btnHoy">Hoy</button>
+                    <button id="btn7dias">Últimos 7 días</button>
+                    <button id="btnMes">Este mes</button>
+                    <button id="btnPersonalizado">Personalizado</button>
+                    <input type="date" id="fechaInicio" style="display:none;">
+                    <input type="date" id="fechaFin" style="display:none;">
+                    <button id="btnOk" style="display:none;">Ok</button>
+                    <div class="icon-export-group">
+                        <button id="btnDescargarPDF" class="icon-btn" type="button" title="Descargar PDF">
+                            <span class="icon-pdf"></span>
+                        </button>
+                        <button id="btnDescargarExcel" class="icon-btn" type="button" title="Descargar Excel">
+                            <span class="icon-excel"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="asistencia-filtros">
+                    <label for="filtroEmpleado">Filtrar por empleado:</label>
+                    <select id="filtroEmpleado">
+                        <option value="">Todos</option>
+                    </select>
+                    <div class="filas-filtro-container filas-filtro-right">
+                        <label for="filasPorPagina" class="filas-label">Filas:</label>
+                        <select id="filasPorPagina">
+                            <option value="15" selected>15</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
 
-    <div class="dashboard-charts">
-        <div class="chart-card">
-            <canvas id="chartMarcaciones"></canvas>
-        </div>
-        <div class="chart-card">
-            <canvas id="chartTopEmpleados"></canvas>
-        </div>
-        <div class="chart-card">
-            <canvas id="chartEmpleadosDepartamento"></canvas>
+                <h3>Asistencia Detallada</h3>
+                <table id="tablaAsistencia">
+                    <thead>
+                        <!-- Cabecera dinámica: ahora incluye DNI -->
+                    </thead>
+                    <tbody>
+                        <!-- Filas dinámicas -->
+                    </tbody>
+                </table>
+
+                <div class="tabla-paginacion">
+                    <button id="btnPrev" disabled>&laquo; Anterior</button>
+                    <span id="paginaActual">1</span> / <span id="totalPaginas">1</span>
+                    <button id="btnNext" disabled>Siguiente &raquo;</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script src="js/dashboard.js"></script>
-</body>
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            mainContent.classList.toggle('sidebar-collapsed');
+        });
 
+        document.getElementById('logoutLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = '/';
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const empresaMain = document.getElementById('empresaNombre');
+            const empresaSidebar = document.getElementById('empresaNombreSidebar');
+            if (empresaMain && empresaSidebar) {
+                empresaSidebar.textContent = empresaMain.textContent;
+            }
+        });
+    </script>
+</body>
 </html>

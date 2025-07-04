@@ -61,6 +61,7 @@ app.get('/api/asistencia-detallada', async (req, res) => {
             )
             SELECT 
                 cte.idempleado,
+                personal.emp_pin, -- DNI agregado
                 personal.emp_firstname,
                 personal.emp_lastname,
                 dept.dept_name,
@@ -103,6 +104,7 @@ app.get('/api/personas', async (req, res) => {
         res.status(500).json({ error: 'Error al obtener cantidad de personas' });
     }
 });
+// 
 
 app.get('/api/marcaciones', async (req, res) => {
     try {
