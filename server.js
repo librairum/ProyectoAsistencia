@@ -1,16 +1,20 @@
 const express = require('express');
 const { loginUser } = require('./controllers/loginController');
-const sql = require('mssql');
+const { exportarExcelPorPagina } = require('./controllers/excelController');
+const db = require('./db/conexion'); // Importa la conexión SQLite
 const path = require('path');
+
+//const sql = require('mssql');
+//const path = require('path');
 
 const app = express();
 app.use(express.json());
 
-const dbConfig = {
+/*const dbConfig = {
     user: 'sa',
-    password: 'admin123456',
+    password: '123456789',
     server: 'localhost',
-    database: 'Asistencia',
+    database: 'planilla',
     options: { encrypt: false }
 };
 
@@ -20,6 +24,7 @@ async function getConnection() {
     }
     return sql.pool;
 }
+*/
 
 app.post('/login', loginUser);
 
@@ -34,6 +39,153 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
+app.get('/api/empresa', (req, res) => {
+    db.get("SELECT cmp_name AS Empresa FROM hr_company LIMIT 1;", [], (err, row) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener empresa' });
+        res.json(row || { Empresa: null });
+    });
+});
+
+app.get('/api/personas', (req, res) => {
+    db.get("SELECT COUNT(*) AS CantidadPersonas FROM hr_employee WHERE emp_active = 1;", [], (err, row) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener cantidad de personas' });
+        res.json(row || { CantidadPersonas: 0 });
+    });
+});
+
+app.get('/api/asistencia-detallada', (req, res) => {
+    const { inicio, fin } = req.query;
+    if (!inicio || !fin) {
+        return res.status(400).json({ error: 'Fechas requeridas' });
+    }
+    const query = `
+        SELECT 
+            p.emp_id AS idempleado,
+            e.emp_pin,
+            e.emp_firstname,
+            e.emp_lastname,
+            d.dept_name,
+            DATE(p.punch_time) AS FechaAsistencia,
+            MIN(strftime('%H:%M', p.punch_time)) AS entrada,
+            MAX(strftime('%H:%M', p.punch_time)) AS salida
+        FROM att_punches p
+        INNER JOIN hr_employee e ON e.id = p.emp_id
+        INNER JOIN hr_department d ON d.id = e.emp_dept
+        WHERE DATE(p.punch_time) BETWEEN ? AND ?
+        GROUP BY p.emp_id, FechaAsistencia
+        ORDER BY p.emp_id ASC, FechaAsistencia ASC
+    `;
+    db.all(query, [inicio, fin], (err, rows) => {
+        if (err) {
+            console.error('Error en asistencia detallada:', err);
+            return res.status(500).json({ error: 'Error al obtener asistencia detallada' });
+        }
+        res.json(rows);
+    });
+});
+
+app.get('/api/marcaciones', (req, res) => {
+    let query = '';
+    let params = [];
+    const filtro = req.query.filtro;
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (filtro === 'hoy') {
+        query = `
+            SELECT DATE(punch_time) AS Fecha, COUNT(*) AS TotalMarcaciones
+            FROM att_punches
+            WHERE DATE(punch_time) = ?
+            GROUP BY Fecha
+            ORDER BY Fecha
+        `;
+        params = [today];
+    } else if (filtro === '7dias') {
+        query = `
+            SELECT DATE(punch_time) AS Fecha, COUNT(*) AS TotalMarcaciones
+            FROM att_punches
+            WHERE DATE(punch_time) >= DATE('now', '-6 days')
+            GROUP BY Fecha
+            ORDER BY Fecha
+        `;
+    } else if (filtro === '30dias') {
+        query = `
+            SELECT DATE(punch_time) AS Fecha, COUNT(*) AS TotalMarcaciones
+            FROM att_punches
+            WHERE DATE(punch_time) >= DATE('now', '-29 days')
+            GROUP BY Fecha
+            ORDER BY Fecha
+        `;
+    } else if (filtro === 'mes') {
+        query = `
+            SELECT DATE(punch_time) AS Fecha, COUNT(*) AS TotalMarcaciones
+            FROM att_punches
+            WHERE strftime('%Y-%m', punch_time) = strftime('%Y-%m', 'now')
+            GROUP BY Fecha
+            ORDER BY Fecha
+        `;
+    } else if (filtro === 'personalizado') {
+        const inicio = req.query.inicio;
+        const fin = req.query.fin;
+        if (!inicio || !fin) {
+            return res.status(400).json({ error: 'Fechas requeridas' });
+        }
+        query = `
+            SELECT DATE(punch_time) AS Fecha, COUNT(*) AS TotalMarcaciones
+            FROM att_punches
+            WHERE DATE(punch_time) BETWEEN ? AND ?
+            GROUP BY Fecha
+            ORDER BY Fecha
+        `;
+        params = [inicio, fin];
+    } else {
+        return res.json([]);
+    }
+
+    db.all(query, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener marcaciones' });
+        res.json(rows);
+    });
+});
+
+app.get('/api/top-empleados', (req, res) => {
+    const query = `
+        SELECT 
+            e.emp_firstname || ' ' || e.emp_lastname AS Empleado,
+            COUNT(*) AS TotalMarcaciones
+        FROM att_punches p
+        INNER JOIN hr_employee e ON p.emp_id = e.id
+        WHERE strftime('%Y-%m', p.punch_time) = strftime('%Y-%m', 'now')
+        GROUP BY Empleado
+        ORDER BY TotalMarcaciones DESC
+        LIMIT 5
+    `;
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener top de empleados' });
+        res.json(rows);
+    });
+});
+
+app.get('/api/empleados-por-departamento', (req, res) => {
+    const query = `
+        SELECT 
+            d.dept_name AS Departamento,
+            GROUP_CONCAT(e.emp_firstname || ' ' || e.emp_lastname, ', ') AS Empleados,
+            COUNT(*) AS TotalEmpleados
+        FROM hr_employee e
+        INNER JOIN hr_department d ON e.emp_dept = d.id
+        WHERE e.emp_active = 1
+        GROUP BY d.dept_name
+        ORDER BY d.dept_name
+    `;
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener empleados por departamento' });
+        res.json(rows);
+    });
+});
+
+app.post('/api/exportar-excel', exportarExcelPorPagina);
+
+/*
 app.get('/api/asistencia-detallada', async (req, res) => {
     try {
         const { inicio, fin } = req.query;
@@ -48,7 +200,7 @@ app.get('/api/asistencia-detallada', async (req, res) => {
                 CONVERT(varchar(10), punch_time, 120) AS FechaAsistencia,
                 emp_id AS idempleado
             INTO #tblmarcaciones
-            FROM dbo.att_punches;
+            FROM att_punches;
 
             WITH cte AS (
                 SELECT  
@@ -206,3 +358,4 @@ app.get('/api/empleados-por-departamento', async (req, res) => {
         res.status(500).json({ error: 'Error al obtener empleados por departamento' });
     }
 });
+*/

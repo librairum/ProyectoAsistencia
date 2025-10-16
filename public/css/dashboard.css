@@ -290,12 +290,15 @@ body {
 
 .asistencia-filtros {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 1rem;
     margin-bottom: 1.2rem;
     justify-content: flex-start;
     flex-wrap: wrap;
     position: relative;
+    min-width: 600px;
+    width: auto;
 }
 
 .asistencia-filtros-inline {
@@ -320,6 +323,13 @@ body {
     min-width: 160px;
     width: 160px;
     margin-right: 0.5rem;
+}
+
+.choices, .choices__inner {
+    box-sizing: border-box;
+    min-width: 250px;
+    width: 500px !important;
+    max-width: 100%;
 }
 
 #filasPorPagina {

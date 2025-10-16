@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnDescargarExcel').onclick = () => {
         // Requiere SheetJS (xlsx) en tu HTML:
         // <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-        exportarExcelPorPagina();
+        descargarExcelDesdeBackend();
     };
 
     // Filtro de filas por página
@@ -179,6 +179,7 @@ async function cargarTopEmpleados() {
     });
 }
 
+//No se está usando
 async function cargarEmpleadosPorDepartamento() {
     const res = await fetch('/api/empleados-por-departamento');
     const data = await res.json();
@@ -194,6 +195,10 @@ async function cargarEmpleadosPorDepartamento() {
     const backgroundColors = labels.map((_, i) => colores[i % colores.length]);
 
     const ctx = document.getElementById('chartEmpleadosDepartamento').getContext('2d');
+    if (!ctx) {
+        console.warn('No se encontró el canvas chartEmpleadosDepartamento');
+        return;
+    }
     if (chartEmpleadosDepartamento) chartEmpleadosDepartamento.destroy();
 
     chartEmpleadosDepartamento = new Chart(ctx, {
@@ -247,6 +252,7 @@ let paginaActual = 1;
 let empleadosPorPagina = 15;
 let empleadosCombo = [];
 let empleadosFiltrados = [];
+//Utilizara getFechasDelMes
 let fechasTabla = [];
 
 async function cargarAsistenciaDetallada(inicio, fin) {
@@ -268,6 +274,17 @@ async function cargarAsistenciaDetallada(inicio, fin) {
         datosAsistencia = data;
         paginaActual = 1;
 
+        // Construye empleadosCombo aquí:
+        const empleadosUnicos = {};
+        datosAsistencia.forEach(row => {
+            empleadosUnicos[row.idempleado] = {
+                id: row.idempleado,
+                nombre: `${row.emp_firstname} ${row.emp_lastname}`,
+                dni: row.emp_pin || ''
+            };
+        });
+        empleadosCombo = Object.values(empleadosUnicos);
+
         cargarComboEmpleados();
         renderizarTablaAsistencia();
         actualizarPaginacion();
@@ -276,7 +293,31 @@ async function cargarAsistenciaDetallada(inicio, fin) {
     }
 }
 
+let choicesEmpleado;
+
 function cargarComboEmpleados() {
+    const select = document.getElementById('filtroEmpleado');
+    select.innerHTML = '';
+    empleadosCombo.forEach(emp => {
+        const option = document.createElement('option');
+        option.value = emp.id;
+        option.textContent = `${emp.nombre}  |  ${emp.dni}`;
+        select.appendChild(option);
+    });
+
+    // Destruye Choices anterior si existe
+    if (choicesEmpleado) choicesEmpleado.destroy();
+
+    // Inicializa Choices después de cargar opciones
+    choicesEmpleado = new Choices(select, {
+        removeItemButton: true,
+        searchEnabled: true,
+        placeholder: true,
+        itemSelectText: 'Seleccionar',
+        placeholderValue: 'Seleccione empleados'
+    });
+
+    /*
     const select = document.getElementById('filtroEmpleado');
     // Obtener empleados únicos
     const empleadosUnicos = {};
@@ -289,14 +330,15 @@ function cargarComboEmpleados() {
     empleadosCombo = Object.entries(empleadosUnicos).map(([id, obj]) => ({ id, ...obj }));
 
     // Limpiar y cargar opciones
-    select.innerHTML = `<option value="">Todos</option>`;
+    select.innerHTML = '';
+    //select.innerHTML = `<option value="">Todos</option>`;
     empleadosCombo.forEach(emp => {
         const option = document.createElement('option');
         option.value = emp.id;
         // Mostrar nombre y DNI juntos
         option.textContent = `${emp.nombre}  |  ${emp.dni}`;
         select.appendChild(option);
-    });
+    });*/
 }
 
 function getDiaSemana(fechaISO) {
@@ -310,15 +352,42 @@ function getDiaSemana(fechaISO) {
     return { nombre: dias[d.getDay()], numero: d.getDay() };
 }
 
+function getFechasDelMes(inicio, fin) {
+    const fechas = [];
+    let fecha = new Date(inicio);
+    const fechaFin = new Date(fin);
+    while (fecha <= fechaFin) {
+        const yyyy = fecha.getFullYear();
+        const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+        const dd = String(fecha.getDate()).padStart(2, '0');
+        fechas.push(`${yyyy}-${mm}-${dd}`);
+        fecha.setDate(fecha.getDate() + 1);
+    }
+    return fechas;
+}
+
+document.querySelectorAll('input[name="formatoTabla"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        formatoTabla = this.value;
+        renderizarTablaAsistencia();
+        actualizarPaginacion();
+    });
+});
+
+let formatoTabla = 'horizontal';
+
 function renderizarTablaAsistencia() {
     const select = document.getElementById('filtroEmpleado');
-    const filtroId = select.value;
+    //const filtroId = select.value;
+    const filtroIds = Array.from(select.selectedOptions).map(opt => opt.value);
     // Agrupar por empleado y fechas
     const fechasSet = new Set();
     const empleadosMap = {};
 
+    
+
     datosAsistencia.forEach(row => {
-        if (filtroId && row.idempleado != filtroId) return;
+        if (filtroIds.length && !filtroIds.includes(String(row.idempleado))) return;
         fechasSet.add(row.FechaAsistencia);
         const key = row.idempleado;
         if (!empleadosMap[key]) {
@@ -334,10 +403,27 @@ function renderizarTablaAsistencia() {
         empleadosMap[key].fechas[row.FechaAsistencia] = `${row.entrada || ''} - ${row.salida || ''}`;
     });
 
+
     // Ordenar fechas por día-mes-año
-    fechasTabla = Array.from(fechasSet).sort((a, b) => {
+    /*fechasTabla = Array.from(fechasSet).sort((a, b) => {
         return new Date(a) - new Date(b);
-    });
+    });*/
+    let fechaInicio, fechaFin;
+    if (datosAsistencia.length > 0) {
+        // Usa el rango de fechas de los datos
+        const fechasUnicas = Array.from(fechasSet).sort((a, b) => new Date(a) - new Date(b));
+        fechaInicio = fechasUnicas[0];
+        fechaFin = fechasUnicas[fechasUnicas.length - 1];
+    } else {
+        // Si no hay datos, usa el mes actual
+        const hoy = new Date();
+        const yyyy = hoy.getFullYear();
+        const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+        fechaInicio = `${yyyy}-${mm}-01`;
+        fechaFin = `${yyyy}-${mm}-${new Date(yyyy, hoy.getMonth() + 1, 0).getDate()}`;
+    }
+    fechasTabla = getFechasDelMes(fechaInicio, fechaFin);
+
     empleadosFiltrados = Object.values(empleadosMap);
 
     // Paginación de empleados
@@ -353,6 +439,38 @@ function renderizarTablaAsistencia() {
     thead.innerHTML = '';
     tbody.innerHTML = '';
 
+    if (formatoTabla === 'vertical') {
+        // Encabezados verticales
+        let ths = `<tr>
+            <th>Fecha</th>
+            <th>Día</th>
+            <th>DNI</th>
+            <th>Nombre y Apellido</th>
+            <th>Departamento</th>
+            <th>Marcación</th>
+        </tr>`;
+        thead.innerHTML = ths;
+
+        const fechasOrdenadas = [...fechasTabla].sort((a, b) => new Date(a) - new Date(b));
+
+        fechasOrdenadas.forEach(f => {
+            empleadosPagina.forEach(emp => {
+                const { nombre } = getDiaSemana(f);
+                const marcacion = emp.fechas && emp.fechas[f] ? emp.fechas[f] : '';
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${f}</td>
+                    <td>${nombre}</td>
+                    <td>${emp.emp_pin || ''}</td>
+                    <td>${emp.emp_firstname} ${emp.emp_lastname}</td>
+                    <td>${emp.dept_name}</td>
+                    <td>${marcacion}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+    } else {
+    // Encabezados horizontales
     let ths = `<tr>
         <th>N° Doc</th>
         <th>Nombre y Apellido</th>
@@ -425,6 +543,8 @@ function renderizarTablaAsistencia() {
         tr.innerHTML = tds;
         tbody.appendChild(tr);
     });
+
+    }
 
     // Mostrar paginación
     const paginacion = document.querySelector('.tabla-paginacion');
@@ -656,9 +776,31 @@ function descargarPDF() {
 
 // Reemplaza el evento del botón Excel por la exportación real por página
 document.getElementById('btnDescargarExcel').onclick = () => {
-    exportarExcelPorPagina();
+    descargarExcelDesdeBackend();
+    //exportarExcelPorPagina();
 };
 
+async function descargarExcelDesdeBackend() {
+    const empleadosPagina = empleadosFiltrados.slice((paginaActual - 1) * empleadosPorPagina, paginaActual * empleadosPorPagina);
+    const fechas = fechasTabla;
+    const response = await fetch('/api/exportar-excel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ empleadosPagina, fechas })
+    });
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'asistencia_por_pagina.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+}
+
+
+/*
 function exportarExcelPorPagina() {
     // Obtén los empleados de la página actual
     const inicio = (paginaActual - 1) * empleadosPorPagina;
@@ -671,36 +813,69 @@ function exportarExcelPorPagina() {
     const wb = XLSX.utils.book_new();
 
     empleadosPagina.forEach(emp => {
-        const ws_data = [
-            ['N° DOC', emp.emp_pin || ''],
-            ['NOMBRE Y APELLIDO', `${emp.emp_firstname} ${emp.emp_lastname}`],
-            ['DEPARTAMENTO', emp.dept_name || ''],
-            [],
-            ['DIA', 'FECHA', 'HORA DE ENTRADA', 'HORA DE SALIDA']
-        ];
+        // Construir los datos desplazados
+        const ws_data = [];
 
+        // Fila 1: DNI y Nombre en C2
+        ws_data[1] = [];
+        ws_data[1][2] = emp.emp_pin || '';
+        ws_data[1][3] = `${emp.emp_firstname} ${emp.emp_lastname}`;
+
+        // Fila 2: Encabezados en C3
+        ws_data[2] = [];
+        ws_data[2][2] = 'dni';
+        ws_data[2][3] = 'fecha';
+        ws_data[2][4] = 'nombreDia';
+        ws_data[2][5] = 'HoraEntrada';
+        ws_data[2][6] = 'HoraSalida';
+        ws_data[2][7] = 'Total';
+
+        // Filas de datos desde la fila 3 (índice 3)
+        let rowIndex = 3;
         fechas.forEach(f => {
             const { nombre } = getDiaSemana(f);
             const marcacion = emp.fechas && emp.fechas[f];
-            let entrada = '', salida = '';
+            let entrada = '', salida = '', total = '';
             if (marcacion && marcacion.includes('-')) {
                 [entrada, salida] = marcacion.split('-').map(x => x.trim());
+
+                if(entrada && salida){
+
+                    // Calcular diferencia en minutos
+                    const [h1, m1] = entrada.split(':').map(Number);
+                    const [h2, m2] = salida.split(':').map(Number);
+                    let minutos = (h2 * 60 + m2) - (h1 * 60 + m1);
+
+                    // Si la diferencia es negativa, ignora
+                    if (minutos < 0) minutos = '';
+                    else {
+                        const horas = Math.floor(minutos / 60);
+                        const mins = minutos % 60;
+                        total = `${String(horas).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                    }
+                }
+
             } else if (marcacion && marcacion.trim() !== '-' && marcacion.trim() !== '') {
                 entrada = marcacion;
                 salida = '';
+                total = '';
             }
+
             const { numero } = getDiaSemana(f);
             if ((numero === 6 || numero === 0) && (!marcacion || marcacion.trim() === '' || marcacion.trim() === '-')) {
                 return;
             }
+            
             const [yyyy, mm, dd] = f.split('-');
-            const fechaFormateada = `${dd}-${mm}-${yyyy}`;
-            ws_data.push([
-                nombre,
-                fechaFormateada,
-                entrada || '',
-                salida || ''
-            ]);
+            const fechaFormateada = `${dd}/${mm}/${yyyy}`;
+            ws_data[rowIndex] = [];
+            ws_data[rowIndex][2] = emp.emp_pin || '';
+            ws_data[rowIndex][3] = fechaFormateada;
+            ws_data[rowIndex][4] = nombre;
+            ws_data[rowIndex][5] = entrada || '';
+            ws_data[rowIndex][6] = salida || '';
+            ws_data[rowIndex][7] = total || '';
+            rowIndex++;
         });
 
         let nombreHoja = `${emp.emp_firstname} ${emp.emp_lastname}`.trim();
@@ -712,4 +887,9 @@ function exportarExcelPorPagina() {
 
     XLSX.writeFile(wb, 'asistencia_por_pagina.xlsx');
 }
+*/
+
+
+
+
 

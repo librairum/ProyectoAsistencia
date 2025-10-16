@@ -1,5 +1,14 @@
 const { poolPromise, sql } = require('../db/conexion');
 
+const loginUser = async (req, res) => {
+    // Acceso permitido sin autenticación
+    res.json({ success: true, message: '🔐 Acceso permitido' });
+};
+
+module.exports = {
+    loginUser
+};
+/*
 async function loginUser(req, res) {
     const { username, password } = req.body;
 
@@ -26,4 +35,4 @@ async function loginUser(req, res) {
 
 module.exports = {
     loginUser
-};
+};*/
